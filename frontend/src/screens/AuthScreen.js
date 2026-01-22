@@ -23,26 +23,83 @@ export default function AuthScreen() {
     setError('');
 
     try {
+      console.log('Attempting to', isLogin ? 'login' : 'register');
+      console.log('API URL:', process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000/api');
+      
       if (isLogin) {
+        console.log('Login request:', { email });
         const response = await api.post('/auth/login', { email, password });
-        signIn(response.data.token, response.data.user);
+        console.log('Login response received:', { 
+          hasToken: !!response.data.token, 
+          hasUser: !!response.data.user 
+        });
+        await signIn(response.data.token, response.data.user);
+        console.log('Sign in completed');
       } else {
         if (!name) {
           setError('Name is required');
           setLoading(false);
           return;
         }
+        // Ensure role is valid, default to retailer if not set
+        const validRole = role && Object.values(USER_ROLES).includes(role) 
+          ? role 
+          : DEFAULT_ROLE;
+        
+        console.log('Register request:', { email, name, role: validRole });
         const response = await api.post('/auth/register', {
           email,
           password,
           name,
-          phone,
-          role,
+          phone: phone || undefined, // Send undefined instead of empty string
+          role: validRole,
         });
-        signIn(response.data.token, response.data.user);
+        console.log('Register response received:', { 
+          hasToken: !!response.data.token, 
+          hasUser: !!response.data.user 
+        });
+        await signIn(response.data.token, response.data.user);
+        console.log('Sign in completed');
       }
     } catch (err) {
-      setError(err.response?.data?.error || 'An error occurred');
+      console.error('Auth error:', err);
+      console.error('Error details:', {
+        message: err.message,
+        response: err.response?.data,
+        status: err.response?.status,
+        code: err.code,
+      });
+      
+      // Handle different error types
+      if (err.response) {
+        // Server responded with error
+        const errorData = err.response.data;
+        
+        // Handle validation errors (array format)
+        if (errorData.errors && Array.isArray(errorData.errors)) {
+          const errorMessages = errorData.errors.map(e => e.msg || e.message).join(', ');
+          setError(errorMessages || 'Validation failed');
+        } 
+        // Handle single error message
+        else if (errorData.error) {
+          setError(errorData.error);
+        }
+        // Handle other error formats
+        else if (errorData.message) {
+          setError(errorData.message);
+        }
+        else {
+          setError(`Server error (${err.response.status}): ${err.response.statusText}`);
+        }
+      } 
+      // Network error (no response)
+      else if (err.request) {
+        setError('Network error: Could not reach server. Is the backend running?');
+      } 
+      // Other errors
+      else {
+        setError(err.message || 'An unexpected error occurred');
+      }
     } finally {
       setLoading(false);
     }
@@ -60,7 +117,7 @@ export default function AuthScreen() {
               {isLogin ? 'Welcome Back' : 'Create Account'}
             </Text>
             <Text variant="bodyMedium" style={styles.subtitle}>
-              {isLogin ? 'Sign in to continue' : 'Join Tuma-Me escrow platform'}
+              {isLogin ? 'Sign in to continue' : 'Join Tuma-Me'}
             </Text>
 
             {error ? (
@@ -164,7 +221,13 @@ export default function AuthScreen() {
 
             <Button
               mode="text"
-              onPress={() => setIsLogin(!isLogin)}
+              onPress={() => {
+                setIsLogin(!isLogin);
+                // Reset role to default when switching to signup
+                if (!isLogin) {
+                  setRole(DEFAULT_ROLE);
+                }
+              }}
               style={styles.switchButton}
             >
               {isLogin
