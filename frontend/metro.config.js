@@ -9,9 +9,13 @@ const config = getDefaultConfig(__dirname);
 config.resolver.sourceExts.push('cjs');
 
 // Add root node_modules to watchFolders for workspace support
+// Extend default watchFolders instead of replacing them
 const projectRoot = __dirname;
 const workspaceRoot = path.resolve(projectRoot, '..');
-config.watchFolders = [workspaceRoot];
+config.watchFolders = [
+  ...(config.watchFolders || []),
+  workspaceRoot
+];
 
 // Ensure React Native from workspace root is transformed
 config.resolver.nodeModulesPaths = [
