@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, ScrollView, Alert, Image } from 'react-native';
-import { Card, Text, Button, Chip, ActivityIndicator } from 'react-native-paper';
+import { Card, Text, Button, Chip, ActivityIndicator, TextInput } from 'react-native-paper';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import api from '../services/api';
 
