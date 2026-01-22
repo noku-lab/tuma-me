@@ -38,7 +38,12 @@
           "cameraPermission": "Allow Tuma-Me to access your camera to scan QR codes."
         }
       ]
-    ]
+    ],
+    "doctor": {
+      "reactNativeDirectoryCheck": {
+        "enabled": false
+      }
+    }
   }
 }
 

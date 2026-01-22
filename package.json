@@ -31,6 +31,7 @@
     "expo-modules-core": "3.0.29",
     "@expo/vector-icons": "15.0.3",
     "@expo/fingerprint": "0.15.4",
-    "react": "19.1.0"
+    "react": "18.3.1",
+    "react-dom": "18.3.1"
   }
 }

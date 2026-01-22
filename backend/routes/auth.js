@@ -20,16 +20,12 @@ router.post('/register', [
   body('email').isEmail().normalizeEmail(),
   body('password').isLength({ min: 6 }),
   body('name').trim().notEmpty(),
-  body('role').optional({ checkFalsy: true }).isIn(['retailer', 'wholesaler', 'admin', 'delivery_agent'])
+    body('role').optional().isIn(['retailer', 'wholesaler', 'admin', 'delivery_agent'])
 ], async (req, res) => {
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      const errorMessages = errors.array().map(e => e.msg).join(', ');
-      return res.status(400).json({ 
-        error: errorMessages,
-        errors: errors.array() // Keep array for detailed errors
-      });
+      return res.status(400).json({ errors: errors.array() });
     }
 
     const { email, password, name, role, phone } = req.body;
@@ -40,17 +36,13 @@ router.post('/register', [
       return res.status(400).json({ error: 'User already exists' });
     }
 
-    // Validate and normalize role
-    const validRoles = ['retailer', 'wholesaler', 'admin', 'delivery_agent'];
-    const normalizedRole = (role && validRoles.includes(role)) ? role : 'retailer';
-
     // Create user
     const user = new User({
       email,
       password,
       name,
-      role: normalizedRole,
-      phone: phone || undefined // Don't save empty strings
+      role: role || 'retailer',
+      phone
     });
 
     await user.save();
@@ -82,11 +74,7 @@ router.post('/login', [
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      const errorMessages = errors.array().map(e => e.msg).join(', ');
-      return res.status(400).json({ 
-        error: errorMessages,
-        errors: errors.array() // Keep array for detailed errors
-      });
+      return res.status(400).json({ errors: errors.array() });
     }
 
     const { email, password } = req.body;
