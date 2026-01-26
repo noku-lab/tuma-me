@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Platform } from 'react-native';
+import { Platform, View, ActivityIndicator } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
@@ -10,18 +10,9 @@ import { Ionicons } from '@expo/vector-icons';
 
 import AuthScreen from './src/screens/AuthScreen';
 import HomeScreen from './src/screens/HomeScreen';
-import TransactionsScreen from './src/screens/TransactionsScreen';
-import CreateTransactionScreen from './src/screens/CreateTransactionScreen';
-import TransactionDetailScreen from './src/screens/TransactionDetailScreen';
-import QRScanScreen from './src/screens/QRScanScreen';
-import ProfileScreen from './src/screens/ProfileScreen';
-import LockedFundsScreen from './src/screens/LockedFundsScreen';
-import WithdrawalScreen from './src/screens/WithdrawalScreen';
-import NotificationsScreen from './src/screens/NotificationsScreen';
-import PendingPayoutsScreen from './src/screens/PendingPayoutsScreen';
-import HardwareQRScreen from './src/screens/HardwareQRScreen';
 import DeliveryAgentScreen from './src/screens/DeliveryAgentScreen';
-import QRPresentationScreen from './src/screens/QRPresentationScreen';
+import CreateDeliveryScreen from './src/screens/CreateDeliveryScreen';
+import ProfileScreen from './src/screens/ProfileScreen';
 import ErrorBoundary from './src/components/ErrorBoundary';
 import { AuthContext } from './src/context/AuthContext';
 import { theme } from './src/theme';
@@ -38,16 +29,11 @@ function MainTabs() {
 
           if (route.name === 'Home') {
             iconName = focused ? 'home' : 'home-outline';
-          } else if (route.name === 'Transactions') {
-            iconName = focused ? 'list' : 'list-outline';
+          } else if (route.name === 'Deliveries') {
+            iconName = focused ? 'truck' : 'truck-outline';
           } else if (route.name === 'Profile') {
             iconName = focused ? 'person' : 'person-outline';
           } else {
-            iconName = 'help-outline'; // Default fallback
-          }
-
-          // Ensure we always return a valid component
-          if (!iconName) {
             iconName = 'help-outline';
           }
 
@@ -59,7 +45,7 @@ function MainTabs() {
       })}
     >
       <Tab.Screen name="Home" component={HomeScreen} />
-      <Tab.Screen name="Transactions" component={TransactionsScreen} />
+      <Tab.Screen name="Deliveries" component={DeliveryAgentScreen} />
       <Tab.Screen name="Profile" component={ProfileScreen} />
     </Tab.Navigator>
   );
@@ -116,86 +102,37 @@ export default function App() {
   };
 
   if (isLoading) {
-    return null; // You can add a loading screen here
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+        <ActivityIndicator size="large" color="#6200ee" />
+      </View>
+    );
   }
-
-  // Determine navigation content based on auth state
-  const navigationContent = userToken == null ? (
-    <Stack.Navigator screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="Auth" component={AuthScreen} />
-    </Stack.Navigator>
-  ) : (
-    <Stack.Navigator>
-      <Stack.Screen 
-        name="Main" 
-        component={MainTabs} 
-        options={{ headerShown: false }}
-      />
-      <Stack.Screen 
-        name="CreateTransaction" 
-        component={CreateTransactionScreen}
-        options={{ title: 'Create Transaction' }}
-      />
-      <Stack.Screen 
-        name="TransactionDetail" 
-        component={TransactionDetailScreen}
-        options={{ title: 'Transaction Details' }}
-      />
-      <Stack.Screen 
-        name="QRScan" 
-        component={QRScanScreen}
-        options={{ title: 'Scan QR Code' }}
-      />
-      <Stack.Screen 
-        name="LockedFunds" 
-        component={LockedFundsScreen}
-        options={{ title: 'Locked Funds' }}
-      />
-      <Stack.Screen 
-        name="Withdrawal" 
-        component={WithdrawalScreen}
-        options={{ title: 'Withdraw Funds' }}
-      />
-      <Stack.Screen 
-        name="Notifications" 
-        component={NotificationsScreen}
-        options={{ title: 'Notifications' }}
-      />
-      <Stack.Screen 
-        name="PendingPayouts" 
-        component={PendingPayoutsScreen}
-        options={{ title: 'Pending Payouts' }}
-      />
-      <Stack.Screen 
-        name="HardwareQR" 
-        component={HardwareQRScreen}
-        options={{ title: 'Hardware QR Generators' }}
-      />
-      <Stack.Screen 
-        name="DeliveryAgent" 
-        component={DeliveryAgentScreen}
-        options={{ title: 'My Deliveries' }}
-      />
-      <Stack.Screen 
-        name="QRPresentation" 
-        component={QRPresentationScreen}
-        options={{ title: 'Present QR Code' }}
-      />
-      <Stack.Screen 
-        name="DeliveryOrderDetail" 
-        component={TransactionDetailScreen}
-        options={{ title: 'Order Details' }}
-      />
-    </Stack.Navigator>
-  );
 
   return (
     <ErrorBoundary>
       <PaperProvider theme={theme}>
         <AuthContext.Provider value={authContext}>
-          {Platform.OS !== 'web' && <StatusBar style="auto" />}
           <NavigationContainer>
-            {navigationContent}
+            {Platform.OS === 'web' ? null : <StatusBar style="auto" />}
+            {userToken == null ? (
+              <Stack.Navigator screenOptions={{ headerShown: false }}>
+                <Stack.Screen name="Auth" component={AuthScreen} />
+              </Stack.Navigator>
+            ) : (
+              <Stack.Navigator>
+                <Stack.Screen 
+                  name="Main" 
+                  component={MainTabs} 
+                  options={{ headerShown: false }}
+                />
+                <Stack.Screen 
+                  name="CreateDelivery" 
+                  component={CreateDeliveryScreen}
+                  options={{ title: 'Create New Delivery' }}
+                />
+              </Stack.Navigator>
+            )}
           </NavigationContainer>
         </AuthContext.Provider>
       </PaperProvider>

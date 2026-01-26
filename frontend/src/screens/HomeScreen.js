@@ -1,34 +1,13 @@
-import React, { useContext, useState, useEffect } from 'react';
+import React, { useContext } from 'react';
 import { View, StyleSheet, ScrollView } from 'react-native';
-import { Card, Text, Button, FAB, ActivityIndicator } from 'react-native-paper';
+import { Card, Text, Button, FAB } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
 import { AuthContext } from '../context/AuthContext';
-import api from '../services/api';
 import { USER_ROLES } from '../constants/roles';
 
 export default function HomeScreen() {
   const navigation = useNavigation();
   const { user } = useContext(AuthContext);
-  const [lockedFunds, setLockedFunds] = useState(null);
-  const [loadingFunds, setLoadingFunds] = useState(false);
-
-  useEffect(() => {
-    if (user?.role === USER_ROLES.RETAILER) {
-      loadLockedFunds();
-    }
-  }, [user]);
-
-  const loadLockedFunds = async () => {
-    setLoadingFunds(true);
-    try {
-      const response = await api.get('/locked-funds');
-      setLockedFunds(response.data);
-    } catch (error) {
-      console.error('Error loading locked funds:', error);
-    } finally {
-      setLoadingFunds(false);
-    }
-  };
 
   return (
     <View style={styles.container}>
@@ -41,49 +20,11 @@ export default function HomeScreen() {
             <Text variant="bodyMedium" style={styles.roleText}>
               Role: {user?.role?.toUpperCase()}
             </Text>
-            {user?.role === USER_ROLES.RETAILER && lockedFunds && (
-              <View style={styles.fundsContainer}>
-                <Text variant="titleMedium" style={styles.fundsLabel}>
-                  Locked Funds
-                </Text>
-                <Text variant="headlineMedium" style={styles.fundsAmount}>
-                  ${lockedFunds.balance?.toFixed(2) || '0.00'}
-                </Text>
-                <Text variant="bodySmall" style={styles.fundsAvailable}>
-                  Available: ${lockedFunds.available?.toFixed(2) || '0.00'}
-                </Text>
-              </View>
-            )}
+            <Text variant="bodyMedium" style={styles.subtitle}>
+              Simple Delivery Management with WhatsApp
+            </Text>
           </Card.Content>
         </Card>
-
-        {user?.role === USER_ROLES.RETAILER && (
-          <Card style={styles.card}>
-            <Card.Content>
-              <View style={styles.fundsCard}>
-                <View>
-                  <Text variant="titleMedium" style={styles.cardTitle}>
-                    Locked Funds Balance
-                  </Text>
-                  {loadingFunds ? (
-                    <ActivityIndicator size="small" />
-                  ) : (
-                    <Text variant="headlineSmall" style={styles.balanceText}>
-                      ${lockedFunds?.balance?.toFixed(2) || '0.00'}
-                    </Text>
-                  )}
-                </View>
-                <Button
-                  mode="outlined"
-                  onPress={() => navigation.navigate('LockedFunds')}
-                  style={styles.fundsButton}
-                >
-                  Manage
-                </Button>
-              </View>
-            </Card.Content>
-          </Card>
-        )}
 
         <Card style={styles.card}>
           <Card.Content>
@@ -91,37 +32,31 @@ export default function HomeScreen() {
               How It Works
             </Text>
             <View style={styles.step}>
-              <Text variant="titleMedium">1. Create Transaction</Text>
+              <Text variant="titleMedium">1. Create Delivery</Text>
               <Text variant="bodyMedium" style={styles.stepDescription}>
                 {user?.role === USER_ROLES.RETAILER
-                  ? 'Start a new order and fund it securely'
+                  ? 'Log what you want to send and recipient details'
                   : user?.role === USER_ROLES.WHOLESALER
-                  ? 'Receive notifications when retailers lock funds'
+                  ? 'Receive delivery requests via WhatsApp'
                   : 'View assigned delivery orders'}
               </Text>
             </View>
             <View style={styles.step}>
-              <Text variant="titleMedium">2. Secure Escrow</Text>
+              <Text variant="titleMedium">2. WhatsApp Notification</Text>
               <Text variant="bodyMedium" style={styles.stepDescription}>
-                Funds are held safely in our digital ledger until delivery
+                Automatic WhatsApp message sent to recipient with delivery details
               </Text>
             </View>
             <View style={styles.step}>
-              <Text variant="titleMedium">3. QR Verification</Text>
+              <Text variant="titleMedium">3. Track Delivery</Text>
               <Text variant="bodyMedium" style={styles.stepDescription}>
-                {user?.role === USER_ROLES.RETAILER
-                  ? 'Scan QR code when you receive your order'
-                  : user?.role === USER_ROLES.WHOLESALER
-                  ? 'Generate QR code when you dispatch the order'
-                  : 'Present QR code to retailer for scanning'}
+                Monitor delivery status and communicate via WhatsApp
               </Text>
             </View>
             <View style={styles.step}>
-              <Text variant="titleMedium">4. Fund Release</Text>
+              <Text variant="titleMedium">4. Confirmation</Text>
               <Text variant="bodyMedium" style={styles.stepDescription}>
-                {user?.role === USER_ROLES.WHOLESALER
-                  ? 'Funds available for withdrawal 24 hours after confirmation'
-                  : 'Funds are automatically released after 12hr hold period'}
+                Simple delivery confirmation without complex payment systems
               </Text>
             </View>
           </Card.Content>
@@ -130,43 +65,33 @@ export default function HomeScreen() {
         {user?.role === USER_ROLES.RETAILER && (
           <Button
             mode="contained"
-            onPress={() => navigation.navigate('CreateTransaction')}
+            onPress={() => navigation.navigate('CreateDelivery')}
             style={styles.actionButton}
             icon="plus"
           >
-            Create New Order
+            Create New Delivery
           </Button>
         )}
 
         {user?.role === USER_ROLES.WHOLESALER && (
-          <>
-            <Button
-              mode="contained"
-              onPress={() => navigation.navigate('PendingPayouts')}
-              style={styles.actionButton}
-              icon="cash"
-            >
-              View Pending Payouts
-            </Button>
-            <Button
-              mode="outlined"
-              onPress={() => navigation.navigate('HardwareQR')}
-              style={styles.actionButton}
-              icon="qrcode"
-            >
-              Manage Hardware QR
-            </Button>
-          </>
+          <Button
+            mode="contained"
+            onPress={() => navigation.navigate('Deliveries')}
+            style={styles.actionButton}
+            icon="truck-delivery"
+          >
+            View All Deliveries
+          </Button>
         )}
 
         {user?.role === USER_ROLES.DELIVERY_AGENT && (
           <Button
             mode="contained"
-            onPress={() => navigation.navigate('DeliveryAgent')}
+            onPress={() => navigation.navigate('Deliveries')}
             style={styles.actionButton}
             icon="truck-delivery"
           >
-            View Assigned Orders
+            View My Deliveries
           </Button>
         )}
       </ScrollView>
@@ -175,14 +100,7 @@ export default function HomeScreen() {
         <FAB
           icon="plus"
           style={styles.fab}
-          onPress={() => navigation.navigate('CreateTransaction')}
-        />
-      )}
-      {user?.role === USER_ROLES.WHOLESALER && (
-        <FAB
-          icon="bell"
-          style={styles.fab}
-          onPress={() => navigation.navigate('Notifications')}
+          onPress={() => navigation.navigate('CreateDelivery')}
         />
       )}
     </View>
@@ -209,6 +127,11 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     opacity: 0.9,
   },
+  subtitle: {
+    color: '#ffffff',
+    opacity: 0.8,
+    marginTop: 8,
+  },
   card: {
     marginBottom: 16,
   },
@@ -232,39 +155,6 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     backgroundColor: '#6200ee',
-  },
-  fundsContainer: {
-    marginTop: 16,
-    paddingTop: 16,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(255, 255, 255, 0.3)',
-  },
-  fundsLabel: {
-    color: '#ffffff',
-    opacity: 0.9,
-    marginBottom: 4,
-  },
-  fundsAmount: {
-    color: '#ffffff',
-    fontWeight: 'bold',
-  },
-  fundsAvailable: {
-    color: '#ffffff',
-    opacity: 0.8,
-    marginTop: 4,
-  },
-  fundsCard: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  balanceText: {
-    fontWeight: 'bold',
-    color: '#6200ee',
-    marginTop: 8,
-  },
-  fundsButton: {
-    marginLeft: 16,
   },
 });
 

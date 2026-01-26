@@ -10,7 +10,7 @@ import './src/utils/errorHandler';
 
 // Log app startup
 console.log('═══════════════════════════════════════');
-console.log('📱 Tuma-Me App Starting...');
+console.log('Tuma-Me App Starting...');
 console.log('All errors from device will appear here');
 console.log('═══════════════════════════════════════');
 

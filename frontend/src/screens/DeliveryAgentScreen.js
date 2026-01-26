@@ -1,25 +1,36 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import { View, StyleSheet, FlatList, RefreshControl, Linking } from 'react-native';
 import { Card, Text, Button, Chip, ActivityIndicator, IconButton } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
+import { AuthContext } from '../context/AuthContext';
 import api from '../services/api';
 
 export default function DeliveryAgentScreen() {
   const navigation = useNavigation();
-  const [orders, setOrders] = useState([]);
+  const { user } = useContext(AuthContext);
+  const [deliveries, setDeliveries] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
-    loadOrders();
+    loadDeliveries();
   }, []);
 
-  const loadOrders = async () => {
+  const loadDeliveries = async () => {
     try {
-      const response = await api.get('/delivery-agent/assigned-orders');
-      setOrders(response.data);
+      let endpoint;
+      if (user?.role === 'delivery_agent') {
+        endpoint = '/delivery-agent/assigned-orders';
+      } else if (user?.role === 'wholesaler') {
+        endpoint = '/deliveries';
+      } else {
+        endpoint = '/deliveries/my';
+      }
+      
+      const response = await api.get(endpoint);
+      setDeliveries(response.data);
     } catch (error) {
-      console.error('Error loading orders:', error);
+      console.error('Error loading deliveries:', error);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -28,7 +39,7 @@ export default function DeliveryAgentScreen() {
 
   const onRefresh = () => {
     setRefreshing(true);
-    loadOrders();
+    loadDeliveries();
   };
 
   const handleCall = (phone) => {
@@ -37,79 +48,123 @@ export default function DeliveryAgentScreen() {
     }
   };
 
+  const handleWhatsApp = (phone, delivery) => {
+    const message = `📦 Delivery Update\n\n` +
+      `Delivery ID: ${delivery._id}\n` +
+      `Status: ${delivery.status?.replace('_', ' ').toUpperCase()}\n` +
+      `Recipient: ${delivery.recipientName}\n` +
+      `Description: ${delivery.description}\n\n` +
+      `Please confirm receipt or provide updates.`;
+
+    const whatsappUrl = `https://wa.me/${phone.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(message)}`;
+    
+    Linking.openURL(whatsappUrl).catch(() => {
+      alert('Please install WhatsApp to send messages');
+    });
+  };
+
   const getStatusColor = (status) => {
     const colors = {
-      funded: '#2196f3',
+      pending: '#ff9800',
+      confirmed: '#2196f3',
       in_transit: '#9c27b0',
-      on_hold: '#ff9800',
       delivered: '#8bc34a',
       completed: '#4caf50',
+      cancelled: '#f44336',
     };
     return colors[status] || '#757575';
   };
 
-  const renderOrder = ({ item }) => (
-    <Card
-      style={styles.card}
-      onPress={() => navigation.navigate('DeliveryOrderDetail', { orderId: item._id })}
-    >
+  const updateDeliveryStatus = async (deliveryId, newStatus) => {
+    try {
+      await api.put(`/deliveries/${deliveryId}/status`, { status: newStatus });
+      loadDeliveries();
+    } catch (error) {
+      console.error('Error updating delivery status:', error);
+    }
+  };
+
+  const renderDelivery = ({ item }) => (
+    <Card style={styles.card}>
       <Card.Content>
         <View style={styles.header}>
-          <Text variant="titleMedium" style={styles.transactionId}>
-            {item.transactionId}
+          <Text variant="titleMedium" style={styles.deliveryId}>
+            Delivery #{item._id?.slice(-8)}
           </Text>
           <Chip
             style={[styles.chip, { backgroundColor: getStatusColor(item.status) }]}
             textStyle={styles.chipText}
           >
-            {item.status.replace('_', ' ').toUpperCase()}
+            {item.status?.replace('_', ' ').toUpperCase()}
           </Chip>
         </View>
+        
         <Text variant="bodyMedium" style={styles.description}>
           {item.description}
         </Text>
-        <View style={styles.retailerInfo}>
-          <View style={styles.retailerDetails}>
-            <Text variant="titleSmall" style={styles.retailerName}>
-              {item.retailer?.name || 'N/A'}
+        
+        <View style={styles.recipientInfo}>
+          <View style={styles.recipientDetails}>
+            <Text variant="titleSmall" style={styles.recipientName}>
+              Recipient: {item.recipientName}
             </Text>
-            {item.retailer?.phone && (
-              <Button
-                mode="text"
+            <Text variant="bodySmall" style={styles.address}>
+              {item.deliveryAddress?.street}, {item.deliveryAddress?.city}
+            </Text>
+          </View>
+          
+          <View style={styles.actionButtons}>
+            {item.recipientPhone && (
+              <IconButton
                 icon="phone"
-                onPress={() => handleCall(item.retailer.phone)}
-                compact
-              >
-                {item.retailer.phone}
-              </Button>
+                size={20}
+                onPress={() => handleCall(item.recipientPhone)}
+              />
+            )}
+            {item.recipientPhone && (
+              <IconButton
+                icon="whatsapp"
+                size={20}
+                onPress={() => handleWhatsApp(item.recipientPhone, item)}
+              />
             )}
           </View>
-          <Text variant="headlineSmall" style={styles.amount}>
-            ${item.amount.toFixed(2)}
-          </Text>
         </View>
-        {item.deliveryAddress && (
-          <View style={styles.addressContainer}>
-            <Text variant="bodySmall" style={styles.addressLabel}>
-              Delivery Address:
-            </Text>
-            <Text variant="bodyMedium" style={styles.address}>
-              {item.deliveryAddress.street}
-              {'\n'}
-              {item.deliveryAddress.city}, {item.deliveryAddress.state} {item.deliveryAddress.zipCode}
-            </Text>
-          </View>
-        )}
-        {item.qrCode && (
-          <Button
-            mode="contained"
-            onPress={() => navigation.navigate('QRPresentation', { transactionId: item._id })}
-            style={styles.qrButton}
-            icon="qrcode"
-          >
-            Show QR Code
-          </Button>
-        )}
+
+        <View style={styles.statusActions}>
+          {user?.role === 'delivery_agent' && item.status === 'confirmed' && (
+            <Button
+              mode="outlined"
+              size="small"
+              onPress={() => updateDeliveryStatus(item._id, 'in_transit')}
+              style={styles.statusButton}
+            >
+              Start Delivery
+            </Button>
+          )}
+          
+          {user?.role === 'delivery_agent' && item.status === 'in_transit' && (
+            <Button
+              mode="contained"
+              size="small"
+              onPress={() => updateDeliveryStatus(item._id, 'delivered')}
+              style={styles.statusButton}
+            >
+              Mark Delivered
+            </Button>
+          )}
+          
+          {user?.role === 'wholesaler' && item.status === 'delivered' && (
+            <Button
+              mode="outlined"
+              size="small"
+              onPress={() => updateDeliveryStatus(item._id, 'completed')}
+              style={styles.statusButton}
+            >
+              Complete Order
+            </Button>
+          )}
+        </View>
       </Card.Content>
     </Card>
   );
@@ -125,8 +180,8 @@ export default function DeliveryAgentScreen() {
   return (
     <View style={styles.container}>
       <FlatList
-        data={orders}
-        renderItem={renderOrder}
+        data={deliveries}
+        renderItem={renderDelivery}
         keyExtractor={(item) => item._id}
         contentContainerStyle={styles.list}
         refreshControl={
@@ -135,7 +190,7 @@ export default function DeliveryAgentScreen() {
         ListEmptyComponent={
           <View style={styles.center}>
             <Text variant="bodyLarge" style={styles.emptyText}>
-              No assigned orders
+              No deliveries found
             </Text>
           </View>
         }
@@ -168,7 +223,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 8,
   },
-  transactionId: {
+  deliveryId: {
     fontWeight: 'bold',
     flex: 1,
   },
@@ -183,7 +238,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     color: '#666',
   },
-  retailerInfo: {
+  recipientInfo: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
@@ -192,33 +247,26 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: '#e0e0e0',
   },
-  retailerDetails: {
+  recipientDetails: {
     flex: 1,
   },
-  retailerName: {
+  recipientName: {
     fontWeight: 'bold',
     marginBottom: 4,
-  },
-  amount: {
-    fontWeight: 'bold',
-    color: '#6200ee',
-  },
-  addressContainer: {
-    marginTop: 8,
-    padding: 12,
-    backgroundColor: '#f5f5f5',
-    borderRadius: 8,
-  },
-  addressLabel: {
-    fontWeight: 'bold',
-    marginBottom: 4,
-    color: '#666',
   },
   address: {
     color: '#333',
   },
-  qrButton: {
-    marginTop: 12,
+  actionButtons: {
+    flexDirection: 'row',
+  },
+  statusActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 8,
+  },
+  statusButton: {
+    minWidth: 100,
   },
   emptyText: {
     color: '#999',
